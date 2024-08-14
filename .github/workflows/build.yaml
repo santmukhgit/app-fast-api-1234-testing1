@@ -1,0 +1,73 @@
+name: Build python app
+
+on:
+  push:
+    branches: main
+
+env:
+  IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: ghcr.io
+  AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME }}
+
+jobs:
+  build-fastapi-app:
+    name: Build FastAPI App
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+      checks: write
+      issues: write
+      pull-requests: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: configure azure credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: login to azure acr
+        run: |
+          az acr login -n ${{ env.AZURE_ACR_NAME }}
+          echo "CONTAINER_REGISTRY=${{ env.AZURE_ACR_NAME }}.azurecr.io" >> "$GITHUB_ENV"
+
+      - name: Log into ${{ env.REGISTRY }}
+        uses: docker/login-action@v3.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set tag
+        run: echo "TAG=`echo $GITHUB_SHA | cut -c 1-7`" >> $GITHUB_ENV
+      
+      - name: Build Application
+        run: |
+          docker build --tag "${{ env.IMAGE_NAME }}:$TAG"  .
+      
+      # Use docker push command directly to work with docker login action.
+      - name: Push to ${{ env.REGISTRY }} registry
+        run: |
+          docker tag "${{ env.IMAGE_NAME }}:$TAG" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG"
+          docker tag "${{ env.IMAGE_NAME }}:$TAG" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Push Image to Azure Registry
+        run: |
+          docker tag "${{ env.IMAGE_NAME }}:$TAG" "$CONTAINER_REGISTRY/$IMAGE:$TAG"
+          docker tag "${{ env.IMAGE_NAME }}:$TAG" "$CONTAINER_REGISTRY/$IMAGE:latest"
+          docker push $CONTAINER_REGISTRY/$IMAGE:$TAG
+          docker push $CONTAINER_REGISTRY/$IMAGE:latest
+  

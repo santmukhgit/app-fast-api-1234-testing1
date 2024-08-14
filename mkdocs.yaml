@@ -1,0 +1,5 @@
+site_name: "FastAPI Application fast-api-1234-testing1"
+site_description: "This is simple FastAPI application created using Uvicorn framework. testng after backstackaks"
+
+nav:
+  - Introduction: index.md

@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: app-fast-api-1234-testing1
+  annotations:
+    "backstage.io/fastapi": "fast-api-1234-testing1"
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  owner: infrastructure
+  lifecycle: experimental
+  providesApis:
+    - fast-api-1234-testing1
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: fast-api-1234-testing1
+  description: The App APIs Specification. testng after backstackaks
+  tags:
+    - fastapi
+spec:
+  type: openapi
+  lifecycle: experimental
+  owner: infrastructure
+  definition:
+    $text: ./fastapi.yaml
